@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>fr.capture</groupId>
+        <artifactId>jdbc-capture-parent</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>jdbc-capture-agent</artifactId>
+    <name>JDBC Capture :: agent</name>
+
+    <dependencies>
+        <dependency>
+            <groupId>net.bytebuddy</groupId>
+            <artifactId>byte-buddy</artifactId>
+            <version>${bytebuddy.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.jsqlparser</groupId>
+            <artifactId>jsqlparser</artifactId>
+            <version>${jsqlparser.version}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <!-- Final agent artifact name, referenced by the docker scripts / Makefile. -->
+        <finalName>jdbc-capture-agent</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <!-- ONE jar, Java 8 bytecode, runs on Java 8 AND Java 25. -->
+                    <release>8</release>
+                    <compilerArgs>
+                        <arg>-Xlint:-options</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals><goal>shade</goal></goals>
+                        <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <shadedArtifactAttached>false</shadedArtifactAttached>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                        <exclude>module-info.class</exclude>
+                                        <!-- Drop multi-release (Java 24+) variants: they carry classes the
+                                             shade plugin's ASM cannot parse, and Byte Buddy's own bundled ASM
+                                             (class format up to Java 27) already covers our instrumentation.
+                                             We only instrument app/driver classes (low bytecode versions),
+                                             never JDK 25 classes, so the MRJAR JDK-classfile bridge is not needed. -->
+                                        <exclude>META-INF/versions/**</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <!-- Relocate every embedded dependency under fr.capture.shaded
+                                 so the agent never clashes with the application's own copies. -->
+                            <relocations>
+                                <relocation>
+                                    <pattern>net.bytebuddy</pattern>
+                                    <shadedPattern>fr.capture.shaded.net.bytebuddy</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>net.sf.jsqlparser</pattern>
+                                    <shadedPattern>fr.capture.shaded.net.sf.jsqlparser</shadedPattern>
+                                </relocation>
+                            </relocations>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <manifestEntries>
+                                        <Premain-Class>fr.capture.agent.AgentMain</Premain-Class>
+                                        <Agent-Class>fr.capture.agent.AgentMain</Agent-Class>
+                                        <Can-Redefine-Classes>true</Can-Redefine-Classes>
+                                        <Can-Retransform-Classes>true</Can-Retransform-Classes>
+                                        <Can-Set-Native-Method-Prefix>true</Can-Set-Native-Method-Prefix>
+                                    </manifestEntries>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>fr.capture</groupId>
+        <artifactId>jdbc-capture-parent</artifactId>
+        <version>1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>integration-tests</artifactId>
+    <name>JDBC Capture :: integration-tests</name>
+    <description>
+        End-to-end tests: run the legacy (JVM 8) and modern (JVM 25) samples in Docker with the
+        SAME agent jar against a shared PostgreSQL, then assert on the produced JSONL traces.
+        Tests are guarded with JUnit Assumptions: when a prerequisite (agent/sample jar, Docker,
+        or a produced trace) is missing, the test is SKIPPED, never faked green.
+    </description>
+
+    <properties>
+        <maven.compiler.release>17</maven.compiler.release>
+        <junit.version>5.10.2</junit.version>
+        <jackson.version>2.17.1</jackson.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+                <configuration>
+                    <!-- The end-to-end tests are named *IT, which Surefire's default includes skip.
+                         We run them here explicitly (this is a dedicated test module, driven by
+                         `make test`), so `<include>` makes them actually execute rather than passing
+                         vacuously (which would be a false green). -->
+                    <includes>
+                        <include>**/*IT.java</include>
+                    </includes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

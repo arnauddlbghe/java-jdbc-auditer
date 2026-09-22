@@ -1,0 +1,30 @@
+# Common PostgreSQL target for both samples (legacy JVM 8 and modern JVM 25).
+#
+# The network is given an explicit, stable name ("capnet") so that the sample
+# containers - which we start with `docker run` (NOT via compose, because we
+# inject the agent jar through a tar-pipe, see scripts/lib.sh) - can attach to
+# the same network with `--network capnet` and resolve this service by the DNS
+# alias `postgres`.
+name: jdbc-capture
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: capture-postgres
+    environment:
+      POSTGRES_DB: capture
+      POSTGRES_USER: capture
+      POSTGRES_PASSWORD: capture
+    ports:
+      - "5432:5432"          # also published on the host, as a fallback (host.docker.internal)
+    networks:
+      - capnet
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U capture -d capture"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+networks:
+  capnet:
+    name: capnet
