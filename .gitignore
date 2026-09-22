@@ -39,3 +39,6 @@ build/
 .DS_Store
 # IDE
 .idea/
+
+# agent output
+capture/
